@@ -1,0 +1,231 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct Contact {
+    char name[50];
+    char phone[20];
+    char email[50];
+};
+
+struct AVLNode {
+    struct Contact contact;
+    struct AVLNode* left;
+    struct AVLNode* right;
+    int height;
+};
+
+int max(int a, int b) {
+    return (a > b) ? a : b;
+}
+
+int getHeight(struct AVLNode* node) {
+    if (node == NULL)
+        return 0;
+    return node->height;
+}
+
+int getBalance(struct AVLNode* node) {
+    if (node == NULL)
+        return 0;
+    return getHeight(node->left) - getHeight(node->right);
+}
+
+struct AVLNode* rotateRight(struct AVLNode* y) {
+    struct AVLNode* x = y->left;
+    struct AVLNode* T2 = x->right;
+
+    x->right = y;
+    y->left = T2;
+
+    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
+    x->height = max(getHeight(x->left), getHeight(x->right)) + 1;
+
+    return x;
+}
+
+struct AVLNode* rotateLeft(struct AVLNode* x) {
+    struct AVLNode* y = x->right;
+    struct AVLNode* T2 = y->left;
+
+    y->left = x;
+    x->right = T2;
+
+    x->height = max(getHeight(x->left), getHeight(x->right)) + 1;
+    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
+
+    return y;
+}
+
+struct AVLNode* createNode(char name[], char phone[], char email[]) {
+    struct AVLNode* newNode = (struct AVLNode*)malloc(sizeof(struct AVLNode));
+    strcpy(newNode->contact.name, name);
+    strcpy(newNode->contact.phone, phone);
+    strcpy(newNode->contact.email, email);
+    newNode->left = NULL;
+    newNode->right = NULL;
+    newNode->height = 1;
+    return newNode;
+}
+
+struct AVLNode* insert(struct AVLNode* node, char name[], char phone[], char email[]) {
+    if (node == NULL)
+        return createNode(name, phone, email);
+
+    int cmp = strcmp(name, node->contact.name);
+    if (cmp < 0)
+        node->left = insert(node->left, name, phone, email);
+    else if (cmp > 0)
+        node->right = insert(node->right, name, phone, email);
+    else
+        return node; // Duplicate contacts not allowed
+
+    node->height = 1 + max(getHeight(node->left), getHeight(node->right));
+
+    int balance = getBalance(node);
+
+    // Left Left Case
+    if (balance > 1 && strcmp(name, node->left->contact.name) < 0)
+        return rotateRight(node);
+
+    // Right Right Case
+    if (balance < -1 && strcmp(name, node->right->contact.name) > 0)
+        return rotateLeft(node);
+
+    // Left Right Case
+    if (balance > 1 && strcmp(name, node->left->contact.name) > 0) {
+        node->left = rotateLeft(node->left);
+        return rotateRight(node);
+    }
+
+    // Right Left Case
+    if (balance < -1 && strcmp(name, node->right->contact.name) < 0) {
+        node->right = rotateRight(node->right);
+        return rotateLeft(node);
+    }
+
+    return node;
+}
+
+struct AVLNode* getMinValueNode(struct AVLNode* node) {
+    struct AVLNode* current = node;
+    while (current->left != NULL)
+        current = current->left;
+    return current;
+}
+
+struct AVLNode* deleteNode(struct AVLNode* root, char name[]) {
+    if (root == NULL)
+        return root;
+
+    int cmp = strcmp(name, root->contact.name);
+    if (cmp < 0)
+        root->left = deleteNode(root->left, name);
+    else if (cmp > 0)
+        root->right = deleteNode(root->right, name);
+    else {
+        if (root->left == NULL || root->right == NULL) {
+            struct AVLNode* temp = root->left ? root->left : root->right;
+            if (temp == NULL) {
+                temp = root;
+                root = NULL;
+            } else
+                *root = *temp;
+            free(temp);
+        } else {
+            struct AVLNode* temp = getMinValueNode(root->right);
+            strcpy(root->contact.name, temp->contact.name);
+            strcpy(root->contact.phone, temp->contact.phone);
+            strcpy(root->contact.email, temp->contact.email);
+            root->right = deleteNode(root->right, temp->contact.name);
+        }
+    }
+
+    if (root == NULL)
+        return root;
+
+    root->height = 1 + max(getHeight(root->left), getHeight(root->right));
+    int balance = getBalance(root);
+
+    // Left Left Case
+    if (balance > 1 && getBalance(root->left) >= 0)
+        return rotateRight(root);
+
+    // Left Right Case
+    if (balance > 1 && getBalance(root->left) < 0) {
+        root->left = rotateLeft(root->left);
+        return rotateRight(root);
+    }
+
+    // Right Right Case
+    if (balance < -1 && getBalance(root->right) <= 0)
+        return rotateLeft(root);
+
+    // Right Left Case
+    if (balance < -1 && getBalance(root->right) > 0) {
+        root->right = rotateRight(root->right);
+        return rotateLeft(root);
+    }
+
+    return root;
+}
+
+void traverseInOrder(struct AVLNode* root) {
+    if (root != NULL) {
+        traverseInOrder(root->left);
+        printf("Name: %s\n", root->contact.name);
+        printf("Phone: %s\n", root->contact.phone);
+        printf("Email: %s\n", root->contact.email);
+        printf("------------------------\n");
+        traverseInOrder(root->right);
+    }
+}
+
+int main() {
+    struct AVLNode* root = NULL;
+    int choice;
+    char name[50], phone[20], email[50];
+
+    printf("Contact Management System\n");
+
+    while (1) {
+        printf("\n----- MENU -----\n");
+        printf("1. Add a contact\n");
+        printf("2. Delete a contact\n");
+        printf("3. Display contacts (In-order)\n");
+        printf("4. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                printf("\nEnter contact name: ");
+                scanf("%s", name);
+                printf("Enter contact phone number: ");
+                scanf("%s", phone);
+                printf("Enter contact email address: ");
+                scanf("%s", email);
+                root = insert(root, name, phone, email);
+                printf("Contact added successfully.\n");
+                break;
+            case 2:
+                printf("\nEnter contact name to delete: ");
+                scanf("%s", name);
+                root = deleteNode(root, name);
+                printf("Contact deleted successfully.\n");
+                break;
+            case 3:
+                printf("\n----- Contacts -----\n");
+                traverseInOrder(root);
+                break;
+            case 4:
+                printf("\nExiting program...\n");
+                exit(0);
+            default:
+                printf("Invalid choice. Please try again.\n");
+                break;
+        }
+    }
+
+    return 0;
+}
