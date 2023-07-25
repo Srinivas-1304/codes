@@ -1,0 +1,15 @@
+#include<stdio.h>
+int main()
+{
+
+    int c,h,t,counter;
+    h=0;
+    t=0;
+    for(counter=0;counter<50;counter++)
+        c=rand();
+    if(c%2==0)
+    h++;
+    else
+        t++;
+    printf("%d%d",h,t);
+}
